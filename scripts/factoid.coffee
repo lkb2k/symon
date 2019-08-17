@@ -24,33 +24,80 @@ witticism = [
 class Factoid
   subject: null
   definition: null
-  isQuestion: false
-  isStatement: false
+  question: false
+  statement: false
 
-  constructor: (@rawText) ->
+  constructor: (@client, @rawText, @isDirectMessage) ->
     doc = nlp(rawText)
     @normalizedText = doc.normalize().out('text')
-    @scrubbedText = @constructor.clean(@normalizedText)
+    @scrubbedText = @clean(@normalizedText)
 
-    if @constructor.isQuestion(@scrubbedText)
-      @isQuestion = true
-      @subject = @constructor.extractSubjectFromQuestion(@scrubbedText)
-    else if @constructor.isStatement(@scrubbedText)
+    if @isQuestion(@scrubbedText)
+      @question = true
+      @subject = @extractSubjectFromQuestion(@scrubbedText)
+      
+    else if @isStatement(@scrubbedText)
       match = @scrubbedText.match(/(.*)\s+(is|are)\s(.*)/)
       if match
-        @isStatement = true
-        @subject = @constructor.extractNounPhrase(match[1])
+        @statement = true
+        @subject = @extractNounPhrase(match[1])
         @verb = match[2]
         @definition = match[3] 
+    
+    console.log('found question: '+@subject) if @question
+    console.log('found statement: '+@scrubbedText) if @statement
 
-  @extractNounPhrase: (input) ->
+  process: (msg) ->
+    @answer(msg) if @question
+    @store(msg) if @statement
+
+  store: (msg) ->
+    @client.zadd(@subject, 0, "#{@scrubbedText}")
+    @acknowledge(msg) if @isDirectMessage
+
+  acknowledge: (msg) -> 
+    username = msg.message.user.name
+    msg.send msg.random [
+      "Ok, #{username}.",
+      "Got it, #{username}."
+      "#{username}: Understood.",
+      "You betcha, #{username }.",
+      "わかりました, #{username}.",
+      "सही सभी, #{username}", ".#{username}،فهم"
+      "Duly noted.", "Acknowledged.",
+      "#{username}: Acknowledged.",
+      "It has been recorded.",
+      "That makes sense."
+      "#{username}, so what you're saying is that #{@scrubbedText}?  I think I got it…"
+      "Recorded: \"#{username} thinks that #{@crubbedText}.\""
+    ]
+
+
+  answer: (msg) ->
+    @client.zrange @subject, 0, -1, (err, definition) =>
+      if definition.length
+        msg.send "#{msg.random witticism} #{msg.random definition}"
+
+      else if @isDirectMessage
+        username = msg.message.user.name
+        msg.send msg.random [
+          "no clue #{username}"
+          "bugger all #{username}, you've got me."
+          "I wish I knew"
+          "no idea."
+          "I don't know, maybe Jun-Dai knows"
+          "How should I know?  Ask expweb info"
+        ] 
+  
+
+  extractNounPhrase: (input) ->
     noun = nlp(input).nouns().toSingular().out('text')
     return (noun || input).replace /^\s+|\s+$/g, ''
 
-  @isStatement = (input) ->
+  isStatement: (input) ->
     return /\s+(is|are)\s.*[^?]$/i.test input      
 
-  @clean = (input) -> 
+  clean: (input) -> 
     #regexes stolen from infobot
 
     #strip profanity
@@ -81,7 +128,7 @@ class Factoid
 
     return input
 
-  @extractSubjectFromQuestion = (input) -> 
+  extractSubjectFromQuestion: (input) -> 
       # fix the string.
     input = input.replace /\s+\?$/, '?'
     input = input.replace /^whois /i, ''
@@ -111,10 +158,10 @@ class Factoid
     input = input.replace /\s+/, " "
     input = input.replace /\s+$/, ''
     input = input.replace /^\s+/, ''
+    
+    return @extractNounPhrase(input)
 
-    return Factoid.extractNounPhrase(input)
-
-  @isQuestion = (input) ->
+  isQuestion: (input) ->
     if /where are you\??$/i.test input then return false
     if /\?\s*$/.test input then return true
     if /^what's/i.test input then return true
@@ -122,57 +169,6 @@ class Factoid
     if /^wh(o|at|ere|en)\s+/.test input then return true
     if /(cell|e-?mail|url)$/.test input then return true
     return false
-
-normalize = (input) ->
-  return Factoid.clean(input)
-
-question = (input) ->
-  return Factoid.isQuestion(input)
-
-statement = (input) ->
-  Factoid.isStatement(input)
-
-trim = (input) ->
-  return Factoid.extractSubjectFromQuestion(input)
-
-evaluate = (client,msg,input, factoid, isResponse=false) ->
-  username = msg.message.user.name
-
-  if factoid.isQuestion
-    console.log('got a question for ya')
-    subject = factoid.subject
-    client.zrange subject, 0, -1, (err, definition) ->
-
-      if definition.length
-        msg.send "#{msg.random witticism} #{subject} #{msg.random definition}" if definition.length
-
-      else msg.send msg.random [
-        "no clue #{username}"
-        "bugger all #{username}, you've got me."
-        "I wish I knew"
-        "no idea."
-        "I don't know, maybe Jun-Dai knows"
-        "How should I know?  Ask expweb info"
-      ] if isResponse
-
-  else if factoid.isStatement
-    console.log('found a fact: '+factoid.scrubbedText)
-    client.zadd(factoid.subject, 0, "#{factoid.verb} #{factoid.definition}")
-
-    msg.send msg.random [
-      "Ok, #{username}.",
-      "Got it, #{username}."
-      "#{username}: Understood.",
-      "You betcha, #{username }.",
-      "わかりました, #{username}.",
-      "सही सभी, #{username}", ".#{username}،فهم"
-      "Duly noted.", "Acknowledged.",
-      "#{username}: Acknowledged.",
-      "It has been recorded.",
-      "That makes sense."
-      "#{username}, so what you're saying is that #{factoid.scrubbedText}?  I think I got it…"
-      "Recorded: \"#{username} thinks that #{factoid.scrubbedText}.\""
-    ] if isResponse
 
 
 # sets up hooks to persist the brain into redis.
@@ -186,9 +182,8 @@ module.exports = (robot) ->
   client.on "connect", ->
     robot.logger.debug "Successfully connected to Redis"
 
-  robot.respond /(.*)/i, (msg) ->
-    message = normalize(msg.match[1])
-    evaluate(client,msg,message,fact, true)
+  robot.respond /(.*)/i, (msg) ->    
+    fact = new Factoid(client, msg.match[1], true).process(msg)
 
   robot.respond /forget (.*)/i, (msg) ->
     client.del msg.match[1]
@@ -196,8 +191,4 @@ module.exports = (robot) ->
 
   robot.catchAll (msg) ->
     if msg.message.text
-      fact = new Factoid(msg.message.text)
-      console.log Object(fact)
-
-      message = normalize(msg.message.text)
-      evaluate(client,msg,message,fact)
+      new Factoid(client, msg.message.text, false).process(msg)
