@@ -1,0 +1,15 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "program": "EXPRESS_PORT=8123 HUBOT_SLACK_TOKEN=xoxb-4822655825-729186462368-LZ4L8H02iGxr6v0Ia00owGua node_modules/.bin/hubot --name \"verity\" \"$@\" --adapter slack"
+        }
+    ]
+}
