@@ -173,7 +173,7 @@ class Factoid
 
 # sets up hooks to persist the brain into redis.
 module.exports = (robot) ->
-  info   = Url.parse process.env.REDISTOGO_URL || 'redis://localhost:6379'
+  info   = Url.parse process.env.REDIS_URL || 'redis://localhost:6379'
   client = Redis.createClient(info.port, info.hostname)
 
   client.on "error", (err) ->
