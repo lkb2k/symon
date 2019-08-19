@@ -28,9 +28,9 @@ class Factoid
   statement: false
 
   constructor: (@client, @rawText, @isDirectMessage) ->
-    doc = nlp(rawText)
-    @normalizedText = doc.normalize().out('text')
-    @scrubbedText = @clean(@normalizedText)
+    @cleanedText = @clean(rawText)
+    doc = nlp(@cleanedText)
+    @scrubbedText = doc.normalize().out('text')
 
     if @isQuestion(@scrubbedText)
       @question = true
@@ -49,13 +49,14 @@ class Factoid
 
   process: (msg) ->
     @answer(msg) if @question
-    @store(msg) if @statement
+    @store(msg, @subject, @cleanedText) if @statement
 
-  store: (msg) ->
-    @client.zadd(@subject, 0, "#{@scrubbedText}")
-    @acknowledge(msg) if @isDirectMessage
+  store: (msg, key, value) ->
+    @client.zadd(key, 0, "#{value}")
+    console.log('stored: '+key+'|'+value)
+    @acknowledge(msg, value) if @isDirectMessage
 
-  acknowledge: (msg) -> 
+  acknowledge: (msg, stored) -> 
     username = msg.message.user.name
     msg.send msg.random [
       "Ok, #{username}.",
@@ -68,8 +69,8 @@ class Factoid
       "#{username}: Acknowledged.",
       "It has been recorded.",
       "That makes sense."
-      "#{username}, so what you're saying is that #{@scrubbedText}?  I think I got it…"
-      "Recorded: \"#{username} thinks that #{@crubbedText}.\""
+      "#{username}, so what you're saying is that #{stored}?  I think I got it…"
+      "Recorded: \"#{username} thinks that #{stored}.\""
     ]
 
 
@@ -91,7 +92,8 @@ class Factoid
 
   extractNounPhrase: (input) ->
     noun = nlp(input).nouns().toSingular().out('text')
-    return (noun || input).replace /^\s+|\s+$/g, ''
+    output = noun || input
+    return output.replace /^\s+|\s+$/g, '' # trim again
 
   isStatement: (input) ->
     return /\s+(is|are)\s.*[^?]$/i.test input      
@@ -120,10 +122,11 @@ class Factoid
     input = input.replace /(i|one|we|he|she) can (find|get)/ig, 'is'
     input = input.replace /(the )?(address|url) (for|to) /i, ''
     input = input.replace /(where is )+/i, 'where is '
+    input = input.replace /^\s*and\s?,? /i, ''
+    input = input.replace /^\s*i (think|feel) (that )?/i, ''
 
     input = input.replace /\s+/, " "
     input = input.replace /\s+$/, ''
-    input = input.toLowerCase();
 
     return input
 
