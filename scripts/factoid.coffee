@@ -88,7 +88,6 @@ class Factoid
           "I don't know, maybe Jun-Dai knows"
           "How should I know?  Ask expweb info"
         ] 
-  
 
   extractNounPhrase: (input) ->
     noun = nlp(input).nouns().toSingular().out('text')
@@ -170,6 +169,13 @@ class Factoid
     if /(cell|e-?mail|url)$/.test input then return true
     return false
 
+  @forget = (client, msg, input) ->
+    normalizedInput = nlp(input).nouns().toSingular().out('text')
+    client.del input
+    client.del normalizedInput
+    msg.send "It is lost to the winds of time."
+
+
 
 # sets up hooks to persist the brain into redis.
 module.exports = (robot) ->
@@ -188,8 +194,7 @@ module.exports = (robot) ->
     fact = new Factoid(client, msg.match[1], true).process(msg)
 
   robot.respond /forget (.*)/i, (msg) ->
-    client.del msg.match[1]
-    msg.send "It is already forgotten."
+    Factoid.forget(client, msg,msg.match[1])
 
   robot.catchAll (msg) ->
     if msg.message.text
