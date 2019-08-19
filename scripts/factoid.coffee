@@ -49,7 +49,15 @@ class Factoid
 
   process: (msg) ->
     @answer(msg) if @question
-    @store(msg, @subject, @cleanedText) if @statement
+
+    if @statement
+      storedValue = @cleanedText
+      # handle <reply> commands
+      if @definition.match(/^\s*<reply>/i)
+        match = @rawText.match(/<reply>\s+(.*)/i, '')
+        storedValue = "r|#{match[1]}"
+
+      @store(msg, @subject, storedValue)
 
   store: (msg, key, value) ->
     @client.zadd(key, 0, "#{value}")
@@ -77,7 +85,7 @@ class Factoid
   answer: (msg) ->
     @client.zrange @subject, 0, -1, (err, definition) =>
       if definition.length
-        msg.send "#{msg.random witticism} #{msg.random definition}"
+        @reply(msg, msg.random definition)
 
       else if @isDirectMessage
         username = msg.message.user.name
@@ -90,11 +98,16 @@ class Factoid
           "How should I know?  Ask expweb info"
         ] 
 
+  reply: (msg, response) ->
+    if response.match(/^r\|/)
+      msg.send response.replace(/^r\|/, '')
+    else 
+      msg.send "#{msg.random witticism} #{response}"
+
   extractNounPhrase: (input) ->    
     noun = nlp(input).nouns().toSingular().out('text')
     output = noun || input
     output = output.replace /^\s*(?:'|")|(?:'|")\s*$/g, ''
-    console.log(input+' -> '+output)
     return output.replace /^\s+|\s+$/g, '' # trim again
 
   isStatement: (input) ->
