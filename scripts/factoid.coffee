@@ -39,7 +39,6 @@ class Factoid
     else if @isStatement(@scrubbedText)
       match = @scrubbedText.match(/(.+?)\s+(is|are)\s+(.*)/)
       if match
-        console.log(match)        
         @statement = true
         @subject = @extractNounPhrase(match[1])
         @verb = match[2]
@@ -94,6 +93,7 @@ class Factoid
   extractNounPhrase: (input) ->    
     noun = nlp(input).nouns().toSingular().out('text')
     output = noun || input
+    output = output.replace /^\s*(?:'|")|(?:'|")\s*$/g, ''
     console.log(input+' -> '+output)
     return output.replace /^\s+|\s+$/g, '' # trim again
 
