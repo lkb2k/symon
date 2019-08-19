@@ -37,13 +37,14 @@ class Factoid
       @subject = @extractSubjectFromQuestion(@scrubbedText)
       
     else if @isStatement(@scrubbedText)
-      match = @scrubbedText.match(/(.*)\s+(is|are)\s(.*)/)
+      match = @scrubbedText.match(/(.+?)\s+(is|are)\s+(.*)/)
       if match
+        console.log(match)        
         @statement = true
         @subject = @extractNounPhrase(match[1])
         @verb = match[2]
         @definition = match[3] 
-    
+
     console.log('found question: '+@subject) if @question
     console.log('found statement: '+@scrubbedText) if @statement
 
@@ -90,9 +91,10 @@ class Factoid
           "How should I know?  Ask expweb info"
         ] 
 
-  extractNounPhrase: (input) ->
+  extractNounPhrase: (input) ->    
     noun = nlp(input).nouns().toSingular().out('text')
     output = noun || input
+    console.log(input+' -> '+output)
     return output.replace /^\s+|\s+$/g, '' # trim again
 
   isStatement: (input) ->
