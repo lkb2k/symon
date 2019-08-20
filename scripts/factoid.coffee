@@ -21,6 +21,11 @@ witticism = [
   "As I recall,"
 ]
 
+Array::unique = ->
+  output = {}
+  output[@[key]] = @[key] for key in [0...@length]
+  value for key, value of output
+
 class Factoid
   subject: null
   definition: null
@@ -29,8 +34,8 @@ class Factoid
 
   constructor: (@client, @rawText, @isDirectMessage) ->
     @cleanedText = @clean(rawText)
-    doc = nlp(@cleanedText)
-    @scrubbedText = doc.normalize().out('text')
+    @doc = nlp(@cleanedText)
+    @scrubbedText = @doc.normalize().out('text')
 
     if @isQuestion(@scrubbedText)
       @question = true
@@ -43,21 +48,27 @@ class Factoid
         @subject = @extractNounPhrase(match[1])
         @verb = match[2]
         @definition = match[3] 
-
-    console.log('found question: '+@subject) if @question
-    console.log('found statement: '+@scrubbedText) if @statement
-
+    
   process: (msg) ->
-    @answer(msg) if @question
+    return @processQuestion(msg, @subject) if @question
+    return @processStatement(msg) if @statement
+    @processNoise(msg)
 
-    if @statement
-      storedValue = @cleanedText
-      # handle <reply> commands
-      if @definition.match(/^\s*<reply>/i)
-        match = @rawText.match(/<reply>\s+(.*)/i, '')
-        storedValue = "r|#{match[1]}"
+  processStatement: (msg) ->
+    console.log("statement:#{@cleanedText}|#{@scrubbedText}")
+    storedValue = @cleanedText
 
-      @store(msg, @subject, storedValue)
+    # handle <reply> commands
+    if @definition.match(/^\s*<reply>/i)
+      match = @rawText.match(/<reply>\s+(.*)/i, '')
+      storedValue = "r|#{match[1]}"
+
+    @store(msg, @subject, storedValue)
+
+  processNoise: (msg) -> 
+    nouns = [@doc.nouns().out('array')..., @doc.topics().out('array')...].unique()
+    console.log(nouns) if nouns.length
+    @processQuestion(msg, msg.random nouns) if nouns.length
 
   store: (msg, key, value) ->
     @client.zadd(key, 0, "#{value}")
@@ -82,8 +93,9 @@ class Factoid
     ]
 
 
-  answer: (msg) ->
-    @client.zrange @subject, 0, -1, (err, definition) =>
+  processQuestion: (msg, subject) ->
+    console.log('question: '+subject)
+    @client.zrange subject, 0, -1, (err, definition) =>
       if definition.length
         @reply(msg, msg.random definition)
 
