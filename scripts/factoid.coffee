@@ -51,7 +51,7 @@ class Factoid
     
   process: (msg) ->
     return @processQuestion(msg, @subject) if @question
-    return @processStatement(msg) if @statement
+    return @processStatement(msg) if @statement and @isDirectMessage
     @processNoise(msg)
 
   processStatement: (msg) ->
@@ -67,7 +67,7 @@ class Factoid
 
   processNoise: (msg) -> 
     nouns = [@doc.nouns().out('array')..., @doc.topics().out('array')...].unique()
-    console.log(nouns) if nouns.length
+    console.log("noise: #{nouns}") if nouns.length
     @processQuestion(msg, msg.random nouns) if nouns.length
 
   store: (msg, key, value) ->
