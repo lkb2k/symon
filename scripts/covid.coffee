@@ -6,11 +6,17 @@ covid = require('covid19-jh')
 
 module.exports = (robot) ->
 
-
     robot.respond /covid()-?(19)? update (.*)/i, (msg) ->    
         location = msg.match[3]
         covid.country location, (data) -> 
             msg.send data.chart() if data
+            robot.http(data.chart())
+                .get() (err, res, body) ->
+                    robot.adapter.client.web.files.upload(location+".png", {
+                        file:body,
+                        channels: msg.message.room,
+                        filetype:'png'
+                    })
             msg.reply "couldn't find "+location if !data
         msg.finish()            
 
