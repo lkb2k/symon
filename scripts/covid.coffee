@@ -13,7 +13,7 @@ module.exports = (robot) ->
             robot.http(data.chart())
                 .get() (err, res, body) ->
                     robot.adapter.client.web.files.upload(location+".png", {
-                        file:body,
+                        content:body,
                         channels: msg.message.room,
                         filetype:'png'
                     })
