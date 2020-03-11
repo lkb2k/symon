@@ -15,7 +15,10 @@ module.exports = (robot) ->
             json = JSON.parse(body)
             prices = json.map (day) -> day.close
             dates = json.map (day) -> day.date.substr(5)
-            chart = "https://image-charts.com/chart?chtt=#{ticker}&chbh=a&chd=a:#{prices.join()}&chl=#{prices.join('|')}&chxl=0:|#{dates.join('|')}|&chxt=x&chs=999x250&cht=bvg"
+            min = Math.floor (Math.min prices...)
+            max = Math.ceil (Math.max prices...)
+
+            chart = "https://image-charts.com/chart?chtt=#{ticker}&chbh=a&chd=a:#{prices.join()}&chxt=y&chs=999x250&chxr=0,#{min},#{max}&cht=lc"
 
             response =
                 attachments: [
