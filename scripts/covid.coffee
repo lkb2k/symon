@@ -8,7 +8,7 @@ module.exports = (robot) ->
     robot.respond /covid()-?(19)? update (.*)/i, (msg) ->    
         location = msg.match[3]
         covid.country location, (data) -> 
-            msg.send "OK [#{location} confirmed cases|#{data.chart()}]" if data
+            msg.send "OK <#{data.chart()}|#{location} confirmed cases>" if data
             msg.reply "couldn't find "+location if !data
         msg.finish()            
 
