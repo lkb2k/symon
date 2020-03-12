@@ -12,7 +12,7 @@ module.exports = (robot) ->
         console.log(location)
         covid.country location, (data) -> 
             charts = data.map (d) ->                 
-                title:"#{d.country} #{numeral(d.dates.pop().count).format(0,0)}"
+                title:"#{d.country} #{numeral(d.dates[d.dates.length - 1].count).format(0,0)}"
                 image_url:d.chart()
 
             response =
