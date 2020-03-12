@@ -8,7 +8,7 @@ module.exports = (robot) ->
 
     robot.respond /covid()-?(19)? update (.*)/i, (msg) ->    
         msg.finish()            
-        location = msg.match[3].split(" ")
+        location = msg.match[3].match(/\w+|("|')(?:[^"'])+("|')/g).map((l) -> l.replace(/['"\\]/g, ''))
         console.log(location)
         covid.country location, (data) -> 
             charts = data.map (d) ->                 
