@@ -7,19 +7,19 @@ module.exports = (robot) ->
 
     robot.respond /covid()-?(19)? update (.*)/i, (msg) ->    
         msg.finish()            
-        location = msg.match[3]
+        location = msg.match[3].split(" ")
+        console.log(location)
         covid.country location, (data) -> 
-            if data
-                url = data.chart().replace(/\|/g,'%7C')
-                response =
-                    attachments: [
-                        {title:"#{location} confirmed cases", image_url:url}
-                    ]
-                    username: robot.name
-                    as_user: true
+            charts = data.map (d) -> 
+                title:d.country
+                image_url:d.chart()
 
-                msg.send response if data
-            else
-                msg.reply "couldn't find "+location if !data
+            response =
+                attachments: charts
+                username: robot.name
+                as_user: true
+
+            console.log(response)
+            msg.send response if data
 
 
