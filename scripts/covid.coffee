@@ -1,6 +1,7 @@
 # Description:
 #   Get the latest data from Johns Hopkins
 #
+numeral = require('numeral')
 covid = require('covid19-jh')
 
 module.exports = (robot) ->
@@ -10,8 +11,8 @@ module.exports = (robot) ->
         location = msg.match[3].split(" ")
         console.log(location)
         covid.country location, (data) -> 
-            charts = data.map (d) -> 
-                title:d.country
+            charts = data.map (d) ->                 
+                title:"#{d.country} #{numeral(d.dates.pop().count).format(0,0)}"
                 image_url:d.chart()
 
             response =
